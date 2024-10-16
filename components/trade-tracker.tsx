@@ -9,6 +9,12 @@ import { Button } from "@/components/ui/button"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 
+declare global {
+  interface Window {
+    RemoteCalc: (config: unknown) => void;
+  }
+}
+
 interface Trade {
   id: number
   date: string
