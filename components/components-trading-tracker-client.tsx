@@ -110,7 +110,11 @@ export function TradingTrackerClient() {
   }, [theme])
 
   useEffect(() => {
-    const fetchTrades = async () => {
+    fetchTrades()
+  }, [])
+
+  const fetchTrades = async () => {
+    try {
       const { data, error } = await supabase
         .from('trades')
         .select('*')
@@ -121,10 +125,10 @@ export function TradingTrackerClient() {
       } else {
         setTrades(data)
       }
+    } catch (error) {
+      console.error('Error fetching trades:', error)
     }
-
-    fetchTrades()
-  }, [])
+  }
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { id, value } = e.target
@@ -205,7 +209,7 @@ export function TradingTrackerClient() {
         console.error('Error saving trade:', error)
         // Handle error (e.g., show an error message to the user)
       } else {
-        setTrades(prev => [...prev, data[0]])
+        setTrades(prev => [data[0], ...prev])
         // Clear URL params and image URL after saving
         window.history.replaceState({}, '', window.location.pathname)
         setImageUrl("")
@@ -281,13 +285,12 @@ export function TradingTrackerClient() {
                 onClick={() => handleTradeDirectionChange('short')}
                 className={`${
                   searchParams.get('direction') === 'short'
-                    ? 'bg-[#FF5000] text-gray-200 hover:bg-[#FF5000] hover:text-gray-200'
+                    ? 'bg-[#FF5000] text-gray-200  hover:bg-[#FF5000] hover:text-gray-200'
                     : 'hover:bg-[#FF5000] hover:text-gray-200'
                 }`}
               >
                 Short
               </Button>
-              
               <Button
                 variant="outline"
                 onClick={() => handleTradeDirectionChange('long')}
@@ -586,7 +589,7 @@ export function TradingTrackerClient() {
               onClick={() => setOverlayImage(null)}
               className="absolute top-2 right-2 bg-white dark:bg-gray-800 rounded-full"
             >
-              <X className="h-4 w-4" />
+              <X className="h-4 w-4"  />
             </Button>
             <Image src={overlayImage} alt="Trade image" width={800} height={600} className="max-w-full max-h-[90vh] object-contain" />
           </div>
