@@ -49,7 +49,6 @@ export function TradeTracker() {
     document.body.appendChild(script)
 
     script.onload = () => {
-      // @ts-ignore
       window.RemoteCalc({
         "Url": "https://www.cashbackforex.com",
         "TopPaneStyle": "YmFja2dyb3VuZDogbGluZWFyLWdyYWRpZW50KCNmZmYgMjAlLCAjZjVmNWY1IDQ1JSk7IGNvbG9yOiBibGFjazsgYm9yZGVyOiBzb2xpZCAxcHggI2FhYTsgYm9yZGVyLWJvdHRvbTogbm9uZTsg",

@@ -1,6 +1,6 @@
 "use client"
 
-import React, { useState, useEffect } from "react"
+import React, { useState, useEffect, Suspense } from "react"
 import { useSearchParams } from 'next/navigation'
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
@@ -9,12 +9,13 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Button } from "@/components/ui/button"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { Moon, Sun, Upload, Image as ImageIcon, X } from "lucide-react"
+import { Moon, Sun, Image as ImageIcon, X } from "lucide-react"
 import Image from "next/image"
+import { supabase } from '@/lib/supabaseClient'
 
 declare global {
   interface Window {
-    RemoteCalc: (config: any) => void;
+    RemoteCalc: (config: unknown) => void;
   }
 }
 
@@ -40,14 +41,13 @@ interface Trade {
   imageUrl: string
 }
 
-export default function TradingTracker() {
+function TradingTracker() {
   const searchParams = useSearchParams()
   const [trades, setTrades] = useState<Trade[]>([])
   const [showAdditionalSMA, setShowAdditionalSMA] = useState(false)
   const [theme, setTheme] = useState<'light' | 'dark'>('light')
   const [imageUrl, setImageUrl] = useState("")
   const [uploading, setUploading] = useState(false)
-  //  missing to use the correct img
   const [overlayImage, setOverlayImage] = useState<string | null>(null)
 
   useEffect(() => {
@@ -109,6 +109,23 @@ export default function TradingTracker() {
     document.body.className = theme
   }, [theme])
 
+  useEffect(() => {
+    const fetchTrades = async () => {
+      const { data, error } = await supabase
+        .from('trades')
+        .select('*')
+        .order('date', { ascending: false })
+
+      if (error) {
+        console.error('Error fetching trades:', error)
+      } else {
+        setTrades(data)
+      }
+    }
+
+    fetchTrades()
+  }, [])
+
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { id, value } = e.target
     const params = new URLSearchParams(window.location.search)
@@ -156,9 +173,8 @@ export default function TradingTracker() {
     }
   }
 
-  const saveTrade = () => {
-    const newTrade: Trade = {
-      id: Date.now(),
+  const saveTrade = async () => {
+    const newTrade: Omit<Trade, 'id'> = {
       date: searchParams.get('date') || new Date().toISOString(),
       timeframe: searchParams.get('timeframe') || "",
       entrySignal: searchParams.get('entrySignal') || "",
@@ -178,18 +194,52 @@ export default function TradingTracker() {
       direction: searchParams.get('direction') || "",
       imageUrl: imageUrl,
     }
-    setTrades(prev => [...prev, newTrade])
-    // Clear URL params and image URL after saving
-    window.history.replaceState({}, '', window.location.pathname)
-    setImageUrl("")
+
+    try {
+      const { data, error } = await supabase
+        .from('trades')
+        .insert([newTrade])
+        .select()
+
+      if (error) {
+        console.error('Error saving trade:', error)
+        // Handle error (e.g., show an error message to the user)
+      } else {
+        setTrades(prev => [...prev, data[0]])
+        // Clear URL params and image URL after saving
+        window.history.replaceState({}, '', window.location.pathname)
+        setImageUrl("")
+        // Show success message to the user
+      }
+    } catch (error) {
+      console.error('Error saving trade:', error)
+      // Handle error (e.g., show an error message to the user)
+    }
   }
 
-  const handleTradeUpdate = (id: number, field: keyof Trade, value: string) => {
-    setTrades(prevTrades =>
-      prevTrades.map(trade =>
-        trade.id === id ? { ...trade, [field]: value } : trade
-      )
-    )
+  const handleTradeUpdate = async (id: number, field: keyof Trade, value: string) => {
+    try {
+      const { error } = await supabase
+        .from('trades')
+        .update({ [field]: value })
+        .eq('id', id)
+        .select()
+
+      if (error) {
+        console.error('Error updating trade:', error)
+        // Handle error (e.g., show an error message to the user)
+      } else {
+        setTrades(prevTrades =>
+          prevTrades.map(trade =>
+            trade.id === id ? { ...trade, [field]: value } : trade
+          )
+        )
+        // Show success message to the user
+      }
+    } catch (error) {
+      console.error('Error updating trade:', error)
+      // Handle error (e.g., show an error message to the user)
+    }
   }
 
   const toggleTheme = () => {
@@ -240,6 +290,7 @@ export default function TradingTracker() {
               <Button
                 variant="outline"
                 onClick={() => handleTradeDirectionChange('long')}
+                
                 className={`${
                   searchParams.get('direction') === 'long'
                     ? 'bg-[#00C805] text-gray-200 hover:bg-[#00C805] hover:text-gray-200'
@@ -270,7 +321,7 @@ export default function TradingTracker() {
                       <SelectValue placeholder="Select timeframe" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem  value="5m">5 minutes</SelectItem>
+                      <SelectItem value="5m">5 minutes</SelectItem>
                       <SelectItem value="15m">15 minutes</SelectItem>
                       <SelectItem value="30m">30 minutes</SelectItem>
                       <SelectItem value="1h">1 hour</SelectItem>
@@ -542,5 +593,13 @@ export default function TradingTracker() {
         </div>
       )}
     </div>
+  )
+}
+
+export default function Home() {
+  return (
+    <Suspense fallback={<></>}>
+      <TradingTracker />
+    </Suspense>
   )
 }
